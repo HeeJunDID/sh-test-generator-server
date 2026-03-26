@@ -11,6 +11,7 @@ import com.testcasegenerator.infrastructure.ai.claude.dto.ClaudeResponse;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
@@ -19,6 +20,7 @@ import java.util.List;
 
 @Slf4j
 @Component
+@ConditionalOnProperty(name = "app.ai.provider", havingValue = "claude", matchIfMissing = true)
 @RequiredArgsConstructor
 public class ClaudeAiProvider implements AiProvider {
 
