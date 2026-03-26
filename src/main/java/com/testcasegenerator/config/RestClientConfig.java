@@ -12,17 +12,28 @@ public class RestClientConfig {
     private String anthropicBaseUrl;
 
     @Value("${anthropic.api-key}")
-    private String apiKey;
+    private String anthropicApiKey;
 
     @Value("${anthropic.version}")
     private String anthropicVersion;
+
+    @Value("${gemini.base-url}")
+    private String geminiBaseUrl;
 
     @Bean
     public RestClient anthropicRestClient() {
         return RestClient.builder()
                 .baseUrl(anthropicBaseUrl)
-                .defaultHeader("x-api-key", apiKey)
+                .defaultHeader("x-api-key", anthropicApiKey)
                 .defaultHeader("anthropic-version", anthropicVersion)
+                .defaultHeader("Content-Type", "application/json")
+                .build();
+    }
+
+    @Bean
+    public RestClient geminiRestClient() {
+        return RestClient.builder()
+                .baseUrl(geminiBaseUrl)
                 .defaultHeader("Content-Type", "application/json")
                 .build();
     }
