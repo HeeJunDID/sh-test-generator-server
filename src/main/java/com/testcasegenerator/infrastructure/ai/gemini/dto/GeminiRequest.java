@@ -42,5 +42,16 @@ public class GeminiRequest {
     public static class GenerationConfig {
         @JsonProperty("maxOutputTokens")
         private int maxOutputTokens;
+
+        // thinking 모델(gemini-2.5-flash 등)에서 thinking 비활성화 → 출력 토큰 확보
+        @JsonProperty("thinkingConfig")
+        private ThinkingConfig thinkingConfig;
+    }
+
+    @Getter
+    @Builder
+    public static class ThinkingConfig {
+        @JsonProperty("thinkingBudget")
+        private int thinkingBudget;  // 0 = thinking 비활성화
     }
 }

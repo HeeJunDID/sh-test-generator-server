@@ -7,7 +7,7 @@ spring:
 
 app:
   ai:
-    provider: claude        # claude | gemini
+    provider: gemini        # claude | gemini
   cors:
     allowed-origins: http://localhost:5173,http://localhost:3000
 
@@ -21,7 +21,7 @@ anthropic:
 gemini:
   base-url: https://generativelanguage.googleapis.com
   api-key: ${GEMINI_API_KEY:}
-  model: gemini-2.0-flash
+  model: gemini-2.5-flash
   max-tokens: 4096
 
 logging:

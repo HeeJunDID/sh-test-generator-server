@@ -28,6 +28,7 @@ public class GeminiResponse {
     @NoArgsConstructor
     public static class Part {
         private String text;
+        private Boolean thought;  // gemini-2.5-flash 등 thinking 모델의 사고 과정 part
     }
 
     public String extractText() {
@@ -38,6 +39,11 @@ public class GeminiResponse {
         if (content == null || content.getParts() == null || content.getParts().isEmpty()) {
             return "";
         }
-        return content.getParts().get(0).getText();
+        // thought=true 인 part(thinking 내용)를 제외하고 실제 응답 텍스트만 반환
+        return content.getParts().stream()
+                .filter(part -> !Boolean.TRUE.equals(part.getThought()))
+                .map(Part::getText)
+                .findFirst()
+                .orElse("");
     }
 }

@@ -71,6 +71,9 @@ public class GeminiAiProvider implements AiProvider {
                         .build()))
                 .generationConfig(GeminiRequest.GenerationConfig.builder()
                         .maxOutputTokens(maxTokens)
+                        .thinkingConfig(GeminiRequest.ThinkingConfig.builder()
+                                .thinkingBudget(0)
+                                .build())
                         .build())
                 .build();
 
@@ -121,7 +124,7 @@ public class GeminiAiProvider implements AiProvider {
         try {
             return objectMapper.readValue(json, new TypeReference<>() {});
         } catch (Exception e) {
-            log.error("Failed to parse Gemini response as TestCaseDto list: {}", json, e);
+            log.error("Failed to parse Gemini response. error={}, json={}", e.getMessage(), json);
             throw new BusinessException("AI 응답을 파싱하는데 실패했습니다.");
         }
     }
