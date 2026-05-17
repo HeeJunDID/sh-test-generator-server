@@ -1,5 +1,6 @@
 package com.testcasegenerator.infrastructure.ai.dify;
 
+import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.testcasegenerator.common.exception.BusinessException;
 import com.testcasegenerator.dto.request.GenerateRequest;
@@ -7,6 +8,8 @@ import com.testcasegenerator.dto.response.TestCaseDto;
 import com.testcasegenerator.infrastructure.ai.AiProvider;
 import com.testcasegenerator.infrastructure.ai.dify.dto.DifyRequest;
 import com.testcasegenerator.infrastructure.ai.dify.dto.DifyResponse;
+import com.testcasegenerator.infrastructure.ai.gemini.dto.GeminiRequest;
+import com.testcasegenerator.infrastructure.ai.gemini.dto.GeminiResponse;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Qualifier;
@@ -27,15 +30,40 @@ public class DifyAiProvider implements AiProvider {
 
     @Qualifier("difyRestClient")
     private final RestClient difyRestClient;
+
+    @Qualifier("geminiRestClient")
+    private final RestClient geminiRestClient;
+
     private final ObjectMapper objectMapper;
 
     @Value("${dify.api-key}")
-    private String apiKey;
+    private String difyApiKey;
+
+    @Value("${gemini.api-key}")
+    private String geminiApiKey;
+
+    @Value("${gemini.model}")
+    private String geminiModel;
+
+    @Value("${gemini.max-tokens}")
+    private int geminiMaxTokens;
 
     @Override
     public List<TestCaseDto> generateTestCases(GenerateRequest request) {
-        log.debug("Calling Dify workflow API for test case generation. title={}", request.getTitle());
+        log.debug("Calling Dify workflow API. title={}", request.getTitle());
 
+        List<TestCaseDto> basicCases = callDify(request);
+        log.debug("Dify returned {} basic test cases", basicCases.size());
+
+        List<TestCaseDto> enriched = enrichWithGemini(basicCases, request);
+        log.debug("Gemini enrichment complete. cases={}", enriched.size());
+
+        return enriched;
+    }
+
+    // ── Dify 호출 ──────────────────────────────────────────────────────────
+
+    private List<TestCaseDto> callDify(GenerateRequest request) {
         Map<String, Object> requirementsMap = new HashMap<>();
         requirementsMap.put("title", request.getTitle());
         requirementsMap.put("description", request.getDescription());
@@ -44,9 +72,9 @@ public class DifyAiProvider implements AiProvider {
         requirementsMap.put("isDbTask", translateDbWork(request.getDbWork()));
         requirementsMap.put("isFinancial", translateMonetary(request.getMonetary()));
 
-        // Dify workflow expects jsonData as a JSON array string
         String jsonData;
         try {
+            // Dify 워크플로우는 jsonData를 JSON 배열 문자열로 받음
             jsonData = objectMapper.writeValueAsString(List.of(requirementsMap));
         } catch (Exception e) {
             throw new BusinessException("요청 데이터 직렬화에 실패했습니다.");
@@ -64,7 +92,7 @@ public class DifyAiProvider implements AiProvider {
 
         DifyResponse response = difyRestClient.post()
                 .uri("/v1/workflows/run")
-                .header("Authorization", "Bearer " + apiKey)
+                .header("Authorization", "Bearer " + difyApiKey)
                 .body(difyRequest)
                 .retrieve()
                 .onStatus(status -> status.isError(), (req, res) -> {
@@ -77,17 +105,82 @@ public class DifyAiProvider implements AiProvider {
         if (response == null) {
             throw new BusinessException("AI 서비스 응답이 없습니다.", HttpStatus.BAD_GATEWAY);
         }
-
         if (!"succeeded".equals(response.getStatus())) {
             log.error("Dify workflow failed: status={}, error={}", response.getStatus(), response.getError());
             throw new BusinessException("AI 워크플로우 실행에 실패했습니다.", HttpStatus.BAD_GATEWAY);
         }
 
-        List<Map<String, Object>> rawCases = response.extractTestCases();
-        log.debug("Dify workflow returned {} test cases", rawCases.size());
-
-        return mapToTestCaseDtos(rawCases);
+        return mapToTestCaseDtos(response.extractTestCases());
     }
+
+    // ── Gemini 보강 ────────────────────────────────────────────────────────
+
+    private List<TestCaseDto> enrichWithGemini(List<TestCaseDto> basicCases, GenerateRequest request) {
+        String casesJson;
+        try {
+            casesJson = objectMapper.writeValueAsString(basicCases);
+        } catch (Exception e) {
+            log.warn("Failed to serialize basic cases for Gemini enrichment");
+            return basicCases;
+        }
+
+        String prompt = String.format("""
+                다음은 요구사항에 대해 생성된 테스트케이스 목록입니다.
+
+                요구사항 제목: %s
+                요구사항 내용: %s
+
+                아래 JSON 배열의 각 테스트케이스에 다음 세 필드를 추가해주세요:
+                - "precondition": 사전 조건 (string)
+                - "steps": 수행 단계 (string 배열, 3~7개)
+                - "expected": 기대 결과 (string)
+
+                기존 필드는 반드시 그대로 유지하고, 세 필드만 추가하세요.
+                마크다운 코드블록 없이 JSON 배열만 응답하세요.
+
+                테스트케이스:
+                %s
+                """, request.getTitle(), request.getDescription(), casesJson);
+
+        GeminiRequest geminiRequest = GeminiRequest.builder()
+                .contents(List.of(GeminiRequest.Content.builder()
+                        .role("user")
+                        .parts(List.of(GeminiRequest.Part.builder().text(prompt).build()))
+                        .build()))
+                .generationConfig(GeminiRequest.GenerationConfig.builder()
+                        .maxOutputTokens(geminiMaxTokens)
+                        .thinkingConfig(GeminiRequest.ThinkingConfig.builder()
+                                .thinkingBudget(0)
+                                .build())
+                        .build())
+                .build();
+
+        try {
+            GeminiResponse geminiResponse = geminiRestClient.post()
+                    .uri("/v1beta/models/{model}:generateContent?key={apiKey}", geminiModel, geminiApiKey)
+                    .body(geminiRequest)
+                    .retrieve()
+                    .onStatus(status -> status.isError(), (req, res) -> {
+                        log.warn("Gemini enrichment error: {}", res.getStatusCode());
+                        throw new RuntimeException("Gemini enrichment failed");
+                    })
+                    .body(GeminiResponse.class);
+
+            if (geminiResponse == null) return basicCases;
+
+            String rawText = geminiResponse.extractText();
+            String json = extractJsonArray(rawText);
+            List<TestCaseDto> enriched = objectMapper.readValue(json, new TypeReference<>() {});
+            log.debug("Gemini enrichment succeeded. cases={}", enriched.size());
+            return enriched;
+
+        } catch (Exception e) {
+            log.warn("Gemini enrichment failed, returning basic test cases. error={}", e.getMessage());
+            return basicCases;
+        }
+    }
+
+    // ── 공통 유틸 ──────────────────────────────────────────────────────────
 
     private List<TestCaseDto> mapToTestCaseDtos(List<Map<String, Object>> rawCases) {
         List<TestCaseDto> result = new ArrayList<>();
@@ -97,9 +190,9 @@ public class DifyAiProvider implements AiProvider {
                     .programName(toString(raw.get("programName")))
                     .testData(toString(raw.get("testData")))
                     .title(toString(raw.get("testCaseName")))
-                    .precondition(toString(raw.get("precondition")))
-                    .steps(extractSteps(raw.get("steps")))
-                    .expected(toString(raw.get("expectedResult")))
+                    .precondition("")
+                    .steps(List.of())
+                    .expected("")
                     .priority(normalizePriority(toString(raw.get("priority"))))
                     .category(translateCategory(toString(raw.get("type"))))
                     .build());
@@ -107,15 +200,14 @@ public class DifyAiProvider implements AiProvider {
         return result;
     }
 
-    @SuppressWarnings("unchecked")
-    private List<String> extractSteps(Object stepsObj) {
-        if (stepsObj instanceof List<?> list) {
-            return (List<String>) list;
+    private String extractJsonArray(String text) {
+        int start = text.indexOf('[');
+        int end = text.lastIndexOf(']');
+        if (start == -1 || end == -1 || end <= start) {
+            log.error("No JSON array in Gemini response: {}", text);
+            throw new RuntimeException("No JSON array found");
         }
-        if (stepsObj instanceof String s && !s.isBlank()) {
-            return List.of(s);
-        }
-        return List.of();
+        return text.substring(start, end + 1);
     }
 
     private String toString(Object obj) {
@@ -123,8 +215,12 @@ public class DifyAiProvider implements AiProvider {
     }
 
     private String normalizePriority(String priority) {
-        if (priority == null) return "medium";
-        return priority.toLowerCase();
+        if (priority == null || priority.isBlank()) return "medium";
+        return switch (priority.toLowerCase()) {
+            case "high", "높음", "p1" -> "high";
+            case "low", "낮음", "p3" -> "low";
+            default -> "medium";
+        };
     }
 
     private String translateCategory(String type) {
