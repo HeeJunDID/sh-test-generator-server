@@ -7,7 +7,7 @@ import java.util.List;
 
 public interface HistoryService {
 
-    List<HistoryListItemDto> getHistoryList();
+    List<HistoryListItemDto> getHistoryList(String username);
 
-    HistoryDetailDto getHistoryDetail(Long id);
+    HistoryDetailDto getHistoryDetail(Long id, String username);
 }

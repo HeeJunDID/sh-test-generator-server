@@ -23,17 +23,22 @@ public class HistoryServiceImpl implements HistoryService {
     private final ObjectMapper objectMapper;
 
     @Override
-    public List<HistoryListItemDto> getHistoryList() {
-        return historyRepository.findAllByOrderByCreatedAtDesc()
+    public List<HistoryListItemDto> getHistoryList(String username) {
+        return historyRepository.findByUsernameOrderByCreatedAtDesc(username)
                 .stream()
                 .map(HistoryListItemDto::new)
                 .toList();
     }
 
     @Override
-    public HistoryDetailDto getHistoryDetail(Long id) {
+    public HistoryDetailDto getHistoryDetail(Long id, String username) {
         GenerationHistory history = historyRepository.findById(id)
                 .orElseThrow(() -> new BusinessException("이력을 찾을 수 없습니다. id=" + id));
+
+        if (!username.equals(history.getUsername())) {
+            throw new BusinessException("접근 권한이 없습니다.");
+        }
+
         try {
             List<TestCaseDto> testCases = objectMapper.readValue(
                     history.getTestCasesJson(),

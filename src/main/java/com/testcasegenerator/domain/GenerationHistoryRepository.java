@@ -7,4 +7,6 @@ import java.util.List;
 public interface GenerationHistoryRepository extends JpaRepository<GenerationHistory, Long> {
 
     List<GenerationHistory> findAllByOrderByCreatedAtDesc();
+
+    List<GenerationHistory> findByUsernameOrderByCreatedAtDesc(String username);
 }

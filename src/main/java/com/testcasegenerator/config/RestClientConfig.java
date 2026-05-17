@@ -20,6 +20,9 @@ public class RestClientConfig {
     @Value("${gemini.base-url}")
     private String geminiBaseUrl;
 
+    @Value("${dify.base-url}")
+    private String difyBaseUrl;
+
     @Bean
     public RestClient anthropicRestClient() {
         return RestClient.builder()
@@ -34,6 +37,14 @@ public class RestClientConfig {
     public RestClient geminiRestClient() {
         return RestClient.builder()
                 .baseUrl(geminiBaseUrl)
+                .defaultHeader("Content-Type", "application/json")
+                .build();
+    }
+
+    @Bean
+    public RestClient difyRestClient() {
+        return RestClient.builder()
+                .baseUrl(difyBaseUrl)
                 .defaultHeader("Content-Type", "application/json")
                 .build();
     }

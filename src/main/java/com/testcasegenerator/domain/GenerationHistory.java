@@ -20,6 +20,8 @@ public class GenerationHistory {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    private String username;
+
     @Column(nullable = false)
     private String title;
 

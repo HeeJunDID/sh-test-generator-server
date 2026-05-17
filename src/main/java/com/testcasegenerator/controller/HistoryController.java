@@ -6,6 +6,7 @@ import com.testcasegenerator.dto.response.HistoryListItemDto;
 import com.testcasegenerator.service.HistoryService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -20,23 +21,16 @@ public class HistoryController {
 
     private final HistoryService historyService;
 
-    /**
-     * 테스트케이스 생성 이력 목록 조회
-     *
-     * GET /api/history
-     */
     @GetMapping
-    public ResponseEntity<ApiResponse<List<HistoryListItemDto>>> getHistoryList() {
-        return ResponseEntity.ok(ApiResponse.ok(historyService.getHistoryList()));
+    public ResponseEntity<ApiResponse<List<HistoryListItemDto>>> getHistoryList(
+            @AuthenticationPrincipal String username) {
+        return ResponseEntity.ok(ApiResponse.ok(historyService.getHistoryList(username)));
     }
 
-    /**
-     * 특정 이력의 테스트케이스 상세 조회
-     *
-     * GET /api/history/{id}
-     */
     @GetMapping("/{id}")
-    public ResponseEntity<ApiResponse<HistoryDetailDto>> getHistoryDetail(@PathVariable Long id) {
-        return ResponseEntity.ok(ApiResponse.ok(historyService.getHistoryDetail(id)));
+    public ResponseEntity<ApiResponse<HistoryDetailDto>> getHistoryDetail(
+            @PathVariable Long id,
+            @AuthenticationPrincipal String username) {
+        return ResponseEntity.ok(ApiResponse.ok(historyService.getHistoryDetail(id, username)));
     }
 }

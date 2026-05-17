@@ -12,7 +12,6 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
@@ -20,8 +19,7 @@ import org.springframework.web.client.RestClient;
 import java.util.List;
 
 @Slf4j
-@Component
-@ConditionalOnProperty(name = "app.ai.provider", havingValue = "gemini")
+@Component("gemini")
 @RequiredArgsConstructor
 public class GeminiAiProvider implements AiProvider {
 
@@ -82,7 +80,8 @@ public class GeminiAiProvider implements AiProvider {
                 .body(geminiRequest)
                 .retrieve()
                 .onStatus(status -> status.isError(), (req, res) -> {
-                    log.error("Gemini API error: status={}", res.getStatusCode());
+                    String body = new String(res.getBody().readAllBytes());
+                    log.error("Gemini API error: status={}, body={}", res.getStatusCode(), body);
                     throw new BusinessException("AI 서비스 호출에 실패했습니다.", HttpStatus.BAD_GATEWAY);
                 })
                 .body(GeminiResponse.class);
