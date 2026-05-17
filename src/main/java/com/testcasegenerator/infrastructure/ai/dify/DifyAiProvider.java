@@ -1,5 +1,6 @@
 package com.testcasegenerator.infrastructure.ai.dify;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.testcasegenerator.common.exception.BusinessException;
 import com.testcasegenerator.dto.request.GenerateRequest;
 import com.testcasegenerator.dto.response.TestCaseDto;
@@ -15,6 +16,7 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -25,6 +27,7 @@ public class DifyAiProvider implements AiProvider {
 
     @Qualifier("difyRestClient")
     private final RestClient difyRestClient;
+    private final ObjectMapper objectMapper;
 
     @Value("${dify.api-key}")
     private String apiKey;
@@ -33,14 +36,25 @@ public class DifyAiProvider implements AiProvider {
     public List<TestCaseDto> generateTestCases(GenerateRequest request) {
         log.debug("Calling Dify workflow API for test case generation. title={}", request.getTitle());
 
-        Map<String, Object> inputs = new java.util.HashMap<>();
-        inputs.put("title", request.getTitle());
-        inputs.put("description", request.getDescription());
-        inputs.put("devType", translateDevCategory(request.getDevCategory()));
-        inputs.put("isNew", translateIsNew(request.getIsNew()));
-        inputs.put("isDbTask", translateDbWork(request.getDbWork()));
-        inputs.put("isFinancial", translateMonetary(request.getMonetary()));
+        Map<String, Object> requirementsMap = new HashMap<>();
+        requirementsMap.put("title", request.getTitle());
+        requirementsMap.put("description", request.getDescription());
+        requirementsMap.put("devType", translateDevCategory(request.getDevCategory()));
+        requirementsMap.put("isNew", translateIsNew(request.getIsNew()));
+        requirementsMap.put("isDbTask", translateDbWork(request.getDbWork()));
+        requirementsMap.put("isFinancial", translateMonetary(request.getMonetary()));
+
+        // Dify workflow expects jsonData as a JSON array string
+        String jsonData;
+        try {
+            jsonData = objectMapper.writeValueAsString(List.of(requirementsMap));
+        } catch (Exception e) {
+            throw new BusinessException("요청 데이터 직렬화에 실패했습니다.");
+        }
+
+        Map<String, Object> inputs = new HashMap<>();
         inputs.put("addFileYn", "N");
+        inputs.put("jsonData", jsonData);
 
         DifyRequest difyRequest = DifyRequest.builder()
                 .inputs(inputs)
@@ -78,14 +92,13 @@ public class DifyAiProvider implements AiProvider {
     private List<TestCaseDto> mapToTestCaseDtos(List<Map<String, Object>> rawCases) {
         List<TestCaseDto> result = new ArrayList<>();
         for (Map<String, Object> raw : rawCases) {
-            List<String> steps = extractSteps(raw.get("steps"));
             result.add(TestCaseDto.builder()
                     .id(toString(raw.get("testCaseId")))
-                    .programName(toString(raw.get("programId")))
+                    .programName(toString(raw.get("programName")))
                     .testData(toString(raw.get("testData")))
                     .title(toString(raw.get("testCaseName")))
                     .precondition(toString(raw.get("precondition")))
-                    .steps(steps)
+                    .steps(extractSteps(raw.get("steps")))
                     .expected(toString(raw.get("expectedResult")))
                     .priority(normalizePriority(toString(raw.get("priority"))))
                     .category(translateCategory(toString(raw.get("type"))))
@@ -117,11 +130,11 @@ public class DifyAiProvider implements AiProvider {
     private String translateCategory(String type) {
         if (type == null) return "";
         return switch (type) {
-            case "신규기능", "new_feature" -> "신규기능";
-            case "수정기능", "modified_feature" -> "수정기능";
-            case "예외처리", "exception" -> "예외처리";
-            case "성능", "performance" -> "성능";
-            case "경계값", "boundary" -> "경계값";
+            case "Positive", "신규기능", "new_feature" -> "신규기능";
+            case "Modified", "수정기능", "modified_feature" -> "수정기능";
+            case "Negative", "예외처리", "exception" -> "예외처리";
+            case "Performance", "성능", "performance" -> "성능";
+            case "Boundary", "경계값", "boundary" -> "경계값";
             default -> type;
         };
     }
