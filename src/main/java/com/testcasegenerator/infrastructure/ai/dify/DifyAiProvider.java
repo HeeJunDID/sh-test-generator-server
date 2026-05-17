@@ -33,14 +33,14 @@ public class DifyAiProvider implements AiProvider {
     public List<TestCaseDto> generateTestCases(GenerateRequest request) {
         log.debug("Calling Dify workflow API for test case generation. title={}", request.getTitle());
 
-        Map<String, Object> inputs = Map.of(
-                "title", request.getTitle(),
-                "description", request.getDescription(),
-                "devType", translateDevCategory(request.getDevCategory()),
-                "isNew", translateIsNew(request.getIsNew()),
-                "isDbTask", translateDbWork(request.getDbWork()),
-                "isFinancial", translateMonetary(request.getMonetary())
-        );
+        Map<String, Object> inputs = new java.util.HashMap<>();
+        inputs.put("title", request.getTitle());
+        inputs.put("description", request.getDescription());
+        inputs.put("devType", translateDevCategory(request.getDevCategory()));
+        inputs.put("isNew", translateIsNew(request.getIsNew()));
+        inputs.put("isDbTask", translateDbWork(request.getDbWork()));
+        inputs.put("isFinancial", translateMonetary(request.getMonetary()));
+        inputs.put("addFileYn", "N");
 
         DifyRequest difyRequest = DifyRequest.builder()
                 .inputs(inputs)
