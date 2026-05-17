@@ -226,10 +226,15 @@ public class DifyAiProvider implements AiProvider {
     private String translateCategory(String type) {
         if (type == null) return "";
         return switch (type) {
-            case "Positive", "신규기능", "new_feature" -> "신규기능";
-            case "Modified", "수정기능", "modified_feature" -> "수정기능";
-            case "Negative", "예외처리", "exception" -> "예외처리";
-            case "Performance", "성능", "performance" -> "성능";
+            case "Positive", "신규기능", "new_feature", "Functional" -> "기능";
+            case "Modified", "수정기능", "modified_feature" -> "수정";
+            case "Negative", "예외처리", "exception" -> "예외";
+            case "Performance", "성능", "performance",
+                 "Non-functional (Performance)", "Non-Functional (Performance)" -> "성능";
+            case "Non-functional (Security)", "Non-Functional (Security)", "Security" -> "보안";
+            case "Non-functional (Reliability)", "Non-Functional (Reliability)", "Reliability" -> "신뢰성";
+            case "Non-functional (Usability)", "Non-Functional (Usability)", "Usability" -> "사용성";
+            case "Non-functional", "Non-Functional" -> "비기능";
             case "Boundary", "경계값", "boundary" -> "경계값";
             default -> type;
         };

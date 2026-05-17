@@ -24,6 +24,7 @@ public class DataInitializer implements CommandLineRunner {
                     .password(passwordEncoder.encode("admin"))
                     .displayName("관리자")
                     .preferredAiProvider("dify")
+                    .role("ADMIN")
                     .build());
             log.info("Default admin user created");
         }

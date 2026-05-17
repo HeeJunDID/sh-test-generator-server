@@ -28,6 +28,9 @@ public class User {
     @Builder.Default
     private String preferredAiProvider = "dify";
 
+    @Builder.Default
+    private String role = "USER";
+
     @Column(nullable = false)
     @Builder.Default
     private LocalDateTime createdAt = LocalDateTime.now();

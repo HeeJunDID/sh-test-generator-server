@@ -34,9 +34,9 @@ public class AuthController {
             throw new BusinessException("아이디 또는 비밀번호가 올바르지 않습니다.");
         }
 
-        String token = jwtUtil.generateToken(user.getUsername());
+        String token = jwtUtil.generateToken(user.getUsername(), user.getRole());
         return ResponseEntity.ok(ApiResponse.ok(
-                new LoginResponse(token, user.getUsername(), user.getDisplayName(), user.getPreferredAiProvider())
+                new LoginResponse(token, user.getUsername(), user.getDisplayName(), user.getPreferredAiProvider(), user.getRole())
         ));
     }
 }

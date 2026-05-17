@@ -10,4 +10,5 @@ public class LoginResponse {
     private String username;
     private String displayName;
     private String preferredAiProvider;
+    private String role;
 }
