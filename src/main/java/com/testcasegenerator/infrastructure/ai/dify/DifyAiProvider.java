@@ -192,15 +192,24 @@ public class DifyAiProvider implements AiProvider {
                     .programName(toString(raw.get("programName")))
                     .testData(toString(raw.get("testData")))
                     .title(toString(raw.get("testCaseName")))
-                    .testDetail(toString(raw.get("testDetail")))
-                    .precondition("")
-                    .steps(List.of())
-                    .expected("")
+                    .precondition(toString(raw.get("precondition")))
+                    .steps(parseTestSteps(toString(raw.get("testSteps"))))
+                    .expected(toString(raw.get("expectedResult")))
                     .priority(normalizePriority(toString(raw.get("priority"))))
                     .category(translateCategory(toString(raw.get("type"))))
                     .build());
         }
         return result;
+    }
+
+    private List<String> parseTestSteps(String testSteps) {
+        if (testSteps == null || testSteps.isBlank()) return List.of();
+        // "1. 단계1. 2. 단계2. 3. 단계3." 형식 파싱
+        String[] parts = testSteps.split("\\s*\\d+\\.\\s+");
+        return java.util.Arrays.stream(parts)
+                .map(String::trim)
+                .filter(s -> !s.isBlank())
+                .toList();
     }
 
     private String extractJsonArray(String text) {
@@ -228,19 +237,17 @@ public class DifyAiProvider implements AiProvider {
 
     private String translateCategory(String type) {
         if (type == null) return "";
-        return switch (type) {
-            case "Positive", "신규기능", "new_feature", "Functional" -> "기능";
-            case "Modified", "수정기능", "modified_feature" -> "수정";
-            case "Negative", "예외처리", "exception" -> "예외";
-            case "Performance", "성능", "performance",
-                 "Non-functional (Performance)", "Non-Functional (Performance)" -> "성능";
-            case "Non-functional (Security)", "Non-Functional (Security)", "Security" -> "보안";
-            case "Non-functional (Reliability)", "Non-Functional (Reliability)", "Reliability" -> "신뢰성";
-            case "Non-functional (Usability)", "Non-Functional (Usability)", "Usability" -> "사용성";
-            case "Non-functional", "Non-Functional" -> "비기능";
-            case "Boundary", "경계값", "boundary" -> "경계값";
-            default -> type;
-        };
+        String lower = type.toLowerCase();
+        if (lower.contains("boundary") || lower.contains("경계값")) return "경계값";
+        if (lower.contains("performance") || lower.contains("성능")) return "성능";
+        if (lower.contains("security") || lower.contains("보안")) return "보안";
+        if (lower.contains("reliability") || lower.contains("신뢰")) return "신뢰성";
+        if (lower.contains("usability") || lower.contains("사용성")) return "사용성";
+        if (lower.contains("non-functional") || lower.contains("비기능")) return "비기능";
+        if (lower.contains("negative") || lower.contains("예외")) return "예외";
+        if (lower.contains("modified") || lower.contains("수정")) return "수정";
+        if (lower.contains("positive") || lower.contains("functional") || lower.contains("기능")) return "기능";
+        return type;
     }
 
     private String translateDevCategory(String value) {
