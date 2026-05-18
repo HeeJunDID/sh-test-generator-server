@@ -55,10 +55,11 @@ public class DifyAiProvider implements AiProvider {
         List<TestCaseDto> basicCases = callDify(request);
         log.debug("Dify returned {} basic test cases", basicCases.size());
 
-        List<TestCaseDto> enriched = enrichWithGemini(basicCases, request);
-        log.debug("Gemini enrichment complete. cases={}", enriched.size());
+        // List<TestCaseDto> enriched = enrichWithGemini(basicCases, request);
+        // log.debug("Gemini enrichment complete. cases={}", enriched.size());
+        // return enriched;
 
-        return enriched;
+        return basicCases;
     }
 
     // ── Dify 호출 ──────────────────────────────────────────────────────────
