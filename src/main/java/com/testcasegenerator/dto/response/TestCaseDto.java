@@ -17,6 +17,7 @@ public class TestCaseDto {
     private String programName;  // 프로그램 식별자 (e.g. SCR_LOGIN_01)
     private String testData;     // 테스트 데이터 설명
     private String title;        // 테스트케이스 제목
+    private String testDetail;   // Dify 워크플로우 테스트 상세 설명
     private String precondition; // 사전조건
     private List<String> steps;  // 테스트 수행 단계
     private String expected;     // 기대 결과

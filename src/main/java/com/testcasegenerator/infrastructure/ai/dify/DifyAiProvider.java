@@ -130,7 +130,8 @@ public class DifyAiProvider implements AiProvider {
                 요구사항 제목: %s
                 요구사항 내용: %s
 
-                아래 JSON 배열의 각 테스트케이스에 다음 세 필드를 추가해주세요:
+                각 테스트케이스의 "testDetail" 필드에는 워크플로우가 생성한 테스트 시나리오 설명이 담겨 있습니다.
+                이를 참고하여 아래 JSON 배열의 각 테스트케이스에 다음 세 필드를 추가해주세요:
                 - "precondition": 사전 조건 (string)
                 - "steps": 수행 단계 (string 배열, 3~7개)
                 - "expected": 기대 결과 (string)
@@ -190,6 +191,7 @@ public class DifyAiProvider implements AiProvider {
                     .programName(toString(raw.get("programName")))
                     .testData(toString(raw.get("testData")))
                     .title(toString(raw.get("testCaseName")))
+                    .testDetail(toString(raw.get("testDetail")))
                     .precondition("")
                     .steps(List.of())
                     .expected("")
